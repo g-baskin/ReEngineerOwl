@@ -20,6 +20,8 @@
    - **Export Markdown (PRD)** → `PRD.md`
    - **Export OpenAPI (JSON)** → `openapi.json`
    - **Export OpenAPI (YAML)** → `openapi.yaml`
+   - **Export Postman Collection** → `postman.collection.json`
+   - **Export Postman Environment** → `postman.environment.json`
    - **Export Architecture Report** → `architecture.report.md` (+ optional `architecture.report.json`)
 
 ## OpenAPI export details
@@ -42,3 +44,27 @@
 - Detects implementation patterns such as async job orchestration, polling cadence, pagination, search/filter usage, REST resource structure, auth boundaries, rate limiting, caching hints, and data complexity signals.
 - Sanitizes output by aliasing hosts (`captured-host-*`), parameterizing ID-like segments (`{id}`), and omitting secrets/query values to avoid proprietary cloning.
 - Produces `architecture.report.md` for human-readable guidance and `architecture.report.json` for automation workflows.
+
+
+## Postman export details
+- `postman.collection.json` uses the Postman Collection **v2.1** schema and groups requests by captured host, then by templated path (for example `/users/:id`).
+- Request names follow `<METHOD> <pathTemplate>`, and URLs are emitted with Postman variables so they can be replayed safely.
+- URL path templating converts numeric, UUID, and long opaque path segments to `:id`.
+- Query parameters are exported as Postman `query` entries.
+- Request bodies are exported as raw JSON only when valid JSON is present, with `options.raw.language = "json"`.
+- Header export is intentionally strict: only safe headers (`Content-Type`, `Accept`) are included. Authorization, cookies, and token-like headers are excluded.
+
+### Environment variable behavior
+- If one host is captured, the environment contains `baseUrl` (for example `https://api.example.com`) and requests use `{{baseUrl}}`.
+- If multiple hosts are captured, the environment contains one variable per host (for example `baseUrl_api_example_com`, `baseUrl_auth_example_com`) and each folder's requests reference the matching variable.
+
+### Import into Postman
+1. Open Postman and click **Import**.
+2. Import `postman.collection.json`.
+3. Import `postman.environment.json` and select it as the active environment.
+4. Run requests from host folders; URL variables resolve automatically.
+
+### Safety notes
+- Exports are generated locally in the extension.
+- Sensitive auth data is excluded from Postman artifacts by design.
+- Review request bodies before sharing captures externally.

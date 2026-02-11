@@ -1,5 +1,6 @@
 import { buildOpenApiSpec, toYamlString } from "./utils/openapi.js";
 import { analyzeArchitecture } from "./utils/architecture.js";
+import { buildPostmanCollection, buildPostmanEnvironment } from "./utils/postman.js";
 
 const SESSION_KEY = "reRecorder.lastSession";
 
@@ -65,6 +66,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const schemaSummary = session?.schemaSummary || [];
         const spec = buildOpenApiSpec(normalizedEntries, schemaSummary);
         sendResponse({ ok: true, content: toYamlString(spec) });
+      })
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
+
+    return true;
+  }
+
+  if (message.type === "EXPORT_POSTMAN_COLLECTION") {
+    getStoredSession()
+      .then((session) => {
+        const normalizedEntries = session?.normalizedEntries || [];
+        const collection = buildPostmanCollection(normalizedEntries);
+        sendResponse({ ok: true, content: JSON.stringify(collection, null, 2) });
+      })
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
+
+    return true;
+  }
+
+  if (message.type === "EXPORT_POSTMAN_ENV") {
+    getStoredSession()
+      .then((session) => {
+        const normalizedEntries = session?.normalizedEntries || [];
+        const environment = buildPostmanEnvironment(normalizedEntries);
+        sendResponse({ ok: true, content: JSON.stringify(environment, null, 2) });
       })
       .catch((error) => sendResponse({ ok: false, error: String(error) }));
 
