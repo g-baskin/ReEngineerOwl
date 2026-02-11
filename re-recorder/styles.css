@@ -77,3 +77,48 @@ button:disabled {
   max-height: 180px;
   overflow: auto;
 }
+
+.muted {
+  opacity: 0.8;
+}
+
+.library-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+
+.library-settings input {
+  width: 90px;
+}
+
+.session-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.session-item {
+  border: 1px solid #7774;
+  border-radius: 6px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.session-item.active {
+  border-color: #3b82f6;
+}
+
+.session-title {
+  font-weight: 600;
+}
+
+.session-meta {
+  font-size: 12px;
+  opacity: 0.85;
+}

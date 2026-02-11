@@ -15,11 +15,13 @@
         <div class="button-row">
           <button id="startBtn" class="primary">Start Capture</button>
           <button id="stopBtn" disabled>Stop Capture</button>
+          <button id="saveSessionBtn">Save Session</button>
         </div>
 
         <div class="toggles">
           <label><input type="checkbox" id="fullCaptureToggle" /> Full capture (non-JSON)</label>
           <label><input type="checkbox" id="strictStatusToggle" checked /> Keep only 2xx/3xx responses</label>
+          <label><input type="checkbox" id="autoSaveOnStopToggle" /> Auto-save on Stop</label>
         </div>
       </section>
 
@@ -30,11 +32,24 @@
           <li>Filtered requests: <strong id="filteredCount">0</strong></li>
           <li>Normalized entries: <strong id="normalizedCount">0</strong></li>
         </ul>
+        <p id="activeSessionLabel" class="muted">Active session: unsaved current capture</p>
       </section>
 
       <section class="workflow card">
         <h2>Inferred Workflow Steps</h2>
         <ol id="workflowList"></ol>
+      </section>
+
+      <section class="library card">
+        <h2>Capture Library</h2>
+        <div class="library-settings">
+          <label>
+            Max sessions
+            <input type="number" id="maxSessionsInput" min="1" max="200" step="1" />
+          </label>
+          <button id="saveSettingsBtn">Save Library Settings</button>
+        </div>
+        <ul id="sessionList" class="session-list"></ul>
       </section>
 
       <section class="exports card">
