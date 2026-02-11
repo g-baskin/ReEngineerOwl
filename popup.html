@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>RE Recorder</title>
+    <style>
+      body { font-family: Arial, sans-serif; min-width: 320px; padding: 12px; }
+      .row { margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+      button { padding: 6px 10px; cursor: pointer; }
+      .metrics { background: #f5f5f5; padding: 8px; border-radius: 6px; }
+      .exports { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .status { font-size: 12px; color: #444; }
+    </style>
+  </head>
+  <body>
+    <h3>RE Recorder</h3>
+
+    <div class="row">
+      <label for="captureMode">Capture Mode</label>
+      <select id="captureMode">
+        <option value="injected" selected>Injected (Primary)</option>
+        <option value="devtools">DevTools (Fallback)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <button id="startBtn">Start Capture</button>
+      <button id="stopBtn">Stop Capture</button>
+    </div>
+
+    <div class="metrics">
+      <div>Raw events: <strong id="rawCount">0</strong></div>
+      <div>Filtered events: <strong id="filteredCount">0</strong></div>
+      <div>Status: <strong id="captureState">idle</strong></div>
+    </div>
+
+    <h4>Export</h4>
+    <div class="exports">
+      <button data-export="bundle">capture.bundle.json</button>
+      <button data-export="har">HAR-like JSON</button>
+      <button data-export="schema">schema.summary.json</button>
+      <button data-export="prd">PRD.md</button>
+    </div>
+    <p class="status" id="statusText"></p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
