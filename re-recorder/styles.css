@@ -94,6 +94,28 @@ button:disabled {
   width: 90px;
 }
 
+.sync-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.sync-grid label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.sync-grid input {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #8886;
+}
+
+.sync-actions {
+  margin-top: 8px;
+  align-items: center;
+}
+
 .session-list {
   margin: 0;
   padding: 0;

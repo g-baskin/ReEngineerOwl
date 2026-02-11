@@ -52,6 +52,44 @@
 - If a response body is unavailable, the spec still includes the status response with `Body not captured; metadata only`.
 - Header keys that look sensitive (`auth`, `token`, `cookie`, `secret`) are excluded from OpenAPI output.
 
+
+## Local backend sync upload
+RE Recorder can upload the active (unsaved) capture session or any saved session from the Capture Library to a local backend.
+
+### Configure sync settings in the panel
+1. Open DevTools → **RE Recorder**.
+2. In **Sync Upload**, set:
+   - **Server URL** (default `http://localhost:4000`)
+   - **Org ID** (default `cmlifnbe000023f8447j6dxow`)
+   - **Project ID** (default `cmlifp7zq00073f84s66grg4u`)
+   - **Dev User Email** (default `you@example.com`)
+   - Optional toggle: **Auto-upload on Stop**
+3. Click **Save Sync Settings**.
+
+### Upload flows
+- **Upload Active Session**: stop a capture, then click **Upload Active Session**.
+- **Upload saved session**: use the **Upload** button on a session card in Capture Library.
+- Endpoint used by the extension:
+  - `POST {serverBaseUrl}/orgs/{orgId}/projects/{projectId}/captures`
+  - Header: `x-user-email: <Dev User Email>`
+  - Content type: `multipart/form-data`
+
+### Payload details
+- Required file: `capture.bundle.json` (`captureBundle` field)
+- Optional files (attached when available):
+  - `schema.summary.json`
+  - `openapi.json`
+  - `openapi.yaml`
+  - `postman.collection.json`
+  - `architecture.report.md`
+  - `architecture.report.json`
+  - `PRD.md`
+- Text fields: `title`, `notes`, and available capture stats/time-window metadata.
+
+### Safety pass before upload
+- Upload sanitization strips `headers`, `authorization`, and `cookie` keys from generated artifact payloads.
+- This is an extra safeguard on top of existing capture-time redaction.
+
 ## Notes
 - All processing is local (no backend).
 - Sensitive headers and token-like data are redacted in normalized output.
