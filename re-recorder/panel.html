@@ -16,6 +16,7 @@
           <button id="startBtn" class="primary">Start Capture</button>
           <button id="stopBtn" disabled>Stop Capture</button>
           <button id="saveSessionBtn">Save Session</button>
+          <button id="uploadActiveSessionBtn">Upload Active Session</button>
         </div>
 
         <div class="toggles">
@@ -23,6 +24,34 @@
           <label><input type="checkbox" id="strictStatusToggle" checked /> Keep only 2xx/3xx responses</label>
           <label><input type="checkbox" id="autoSaveOnStopToggle" /> Auto-save on Stop</label>
         </div>
+      </section>
+
+      <section class="sync card">
+        <h2>Sync Upload</h2>
+        <div class="sync-grid">
+          <label>
+            Server URL
+            <input type="text" id="serverBaseUrlInput" placeholder="http://localhost:4000" />
+          </label>
+          <label>
+            Org ID
+            <input type="text" id="orgIdInput" placeholder="cmlifnbe000023f8447j6dxow" />
+          </label>
+          <label>
+            Project ID
+            <input type="text" id="projectIdInput" placeholder="cmlifp7zq00073f84s66grg4u" />
+          </label>
+          <label>
+            Dev User Email
+            <input type="email" id="devUserEmailInput" placeholder="you@example.com" />
+          </label>
+        </div>
+        <div class="button-row sync-actions">
+          <label><input type="checkbox" id="autoUploadOnStopToggle" /> Auto-upload on Stop</label>
+          <button id="saveSyncSettingsBtn">Save Sync Settings</button>
+        </div>
+        <p id="uploadStatus" class="muted">Upload status: idle</p>
+        <p id="uploadCaptureId" class="muted"></p>
       </section>
 
       <section class="stats card">

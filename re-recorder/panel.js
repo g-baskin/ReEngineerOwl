@@ -26,14 +26,25 @@ const state = {
   settings: {
     autoSaveOnStop: false,
     maxSessions: 25
-  }
+  },
+  syncSettings: {
+    serverBaseUrl: "http://localhost:4000",
+    orgId: "cmlifnbe000023f8447j6dxow",
+    projectId: "cmlifp7zq00073f84s66grg4u",
+    devUserEmail: "you@example.com",
+    autoUploadOnStop: false
+  },
+  uploadStatus: "idle",
+  uploadCaptureId: ""
 };
 
 const el = {
   startBtn: document.getElementById("startBtn"),
   stopBtn: document.getElementById("stopBtn"),
   saveSessionBtn: document.getElementById("saveSessionBtn"),
+  uploadActiveSessionBtn: document.getElementById("uploadActiveSessionBtn"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+  saveSyncSettingsBtn: document.getElementById("saveSyncSettingsBtn"),
   exportHarBtn: document.getElementById("exportHarBtn"),
   exportJsonBtn: document.getElementById("exportJsonBtn"),
   exportMdBtn: document.getElementById("exportMdBtn"),
@@ -53,7 +64,14 @@ const el = {
   statusLog: document.getElementById("statusLog"),
   fullCaptureToggle: document.getElementById("fullCaptureToggle"),
   strictStatusToggle: document.getElementById("strictStatusToggle"),
-  autoSaveOnStopToggle: document.getElementById("autoSaveOnStopToggle")
+  autoSaveOnStopToggle: document.getElementById("autoSaveOnStopToggle"),
+  serverBaseUrlInput: document.getElementById("serverBaseUrlInput"),
+  orgIdInput: document.getElementById("orgIdInput"),
+  projectIdInput: document.getElementById("projectIdInput"),
+  devUserEmailInput: document.getElementById("devUserEmailInput"),
+  autoUploadOnStopToggle: document.getElementById("autoUploadOnStopToggle"),
+  uploadStatus: document.getElementById("uploadStatus"),
+  uploadCaptureId: document.getElementById("uploadCaptureId")
 };
 
 let listener = null;
@@ -78,6 +96,15 @@ function formatSessionMeta(meta) {
   const hostCount = Array.isArray(meta.hosts) ? meta.hosts.length : 0;
   const tags = Array.isArray(meta.tags) && meta.tags.length ? meta.tags.join(", ") : "(none)";
   return `${created} • hosts: ${hostCount} • requests: ${meta.normalizedCount || 0} • endpoints: ${meta.distinctPathTemplates || 0} • tags: ${tags}`;
+}
+
+function setUploadStatus(status, detail = "") {
+  state.uploadStatus = status;
+  if (detail) state.uploadCaptureId = detail;
+  if (status !== "success") {
+    state.uploadCaptureId = detail || "";
+  }
+  render();
 }
 
 function renderLibrary() {
@@ -110,6 +137,10 @@ function renderLibrary() {
     loadBtn.textContent = "Load";
     loadBtn.addEventListener("click", () => loadSessionIntoView(session.id));
 
+    const uploadBtn = document.createElement("button");
+    uploadBtn.textContent = "Upload";
+    uploadBtn.addEventListener("click", () => uploadSessionById(session.id, session.name));
+
     const renameBtn = document.createElement("button");
     renameBtn.textContent = "Rename";
     renameBtn.addEventListener("click", async () => {
@@ -137,7 +168,7 @@ function renderLibrary() {
       await exportFromPrompt();
     });
 
-    actions.append(loadBtn, renameBtn, deleteBtn, exportBtn);
+    actions.append(loadBtn, uploadBtn, renameBtn, deleteBtn, exportBtn);
     li.append(title, meta, actions);
     el.sessionList.appendChild(li);
   });
@@ -161,6 +192,7 @@ function render() {
   el.exportPostmanEnvBtn.disabled = !hasData;
   el.exportArchitectureMdBtn.disabled = !hasData;
   el.exportArchitectureJsonBtn.disabled = !hasData;
+  el.uploadActiveSessionBtn.disabled = !hasData || state.uploadStatus === "uploading";
 
   el.workflowList.innerHTML = "";
   state.workflowSteps.slice(0, 12).forEach((step) => {
@@ -176,6 +208,16 @@ function render() {
 
   el.autoSaveOnStopToggle.checked = !!state.settings.autoSaveOnStop;
   el.maxSessionsInput.value = String(state.settings.maxSessions || 25);
+
+  el.serverBaseUrlInput.value = state.syncSettings.serverBaseUrl;
+  el.orgIdInput.value = state.syncSettings.orgId;
+  el.projectIdInput.value = state.syncSettings.projectId;
+  el.devUserEmailInput.value = state.syncSettings.devUserEmail;
+  el.autoUploadOnStopToggle.checked = !!state.syncSettings.autoUploadOnStop;
+  el.uploadStatus.textContent = `Upload status: ${state.uploadStatus}`;
+  el.uploadCaptureId.textContent = state.uploadCaptureId
+    ? `Capture ID: ${state.uploadCaptureId} · View in dashboard (coming soon)`
+    : "";
 
   renderLibrary();
 }
@@ -291,6 +333,47 @@ async function saveCurrentSession(options = {}) {
   }
 }
 
+async function uploadActiveSession() {
+  if (!state.normalizedEntries.length) {
+    logStatus("Nothing to upload yet. Capture and stop first.");
+    return;
+  }
+
+  setUploadStatus("uploading");
+  try {
+    await saveSyncSettings();
+    const response = await sendRuntimeMessage({ type: "UPLOAD_ACTIVE_SESSION" });
+    if (response.captureId) {
+      setUploadStatus("success", response.captureId);
+      logStatus(`Upload succeeded. Capture ID: ${response.captureId}.`);
+    } else {
+      setUploadStatus("success");
+      logStatus("Upload succeeded.");
+    }
+  } catch (error) {
+    setUploadStatus("error", "");
+    logStatus(`Upload failed: ${String(error.message || error)}`);
+  }
+}
+
+async function uploadSessionById(id, name) {
+  setUploadStatus("uploading");
+  try {
+    await saveSyncSettings();
+    const response = await sendRuntimeMessage({ type: "UPLOAD_SESSION_BY_ID", id });
+    if (response.captureId) {
+      setUploadStatus("success", response.captureId);
+      logStatus(`Uploaded saved session \"${name}\". Capture ID: ${response.captureId}.`);
+    } else {
+      setUploadStatus("success");
+      logStatus(`Uploaded saved session \"${name}\".`);
+    }
+  } catch (error) {
+    setUploadStatus("error", "");
+    logStatus(`Saved session upload failed: ${String(error.message || error)}`);
+  }
+}
+
 async function stopCapture() {
   if (!state.isCapturing) return;
 
@@ -325,6 +408,10 @@ async function stopCapture() {
     } catch (error) {
       logStatus(`Auto-save failed: ${String(error.message || error)}`);
     }
+  }
+
+  if (state.syncSettings.autoUploadOnStop) {
+    await uploadActiveSession();
   }
 }
 
@@ -379,6 +466,31 @@ async function updateSettings(patch) {
   render();
 }
 
+async function refreshSyncSettings() {
+  const response = await sendRuntimeMessage({ type: "GET_SYNC_SETTINGS" });
+  state.syncSettings = {
+    ...state.syncSettings,
+    ...(response.settings || {})
+  };
+}
+
+async function saveSyncSettings() {
+  const patch = {
+    serverBaseUrl: (el.serverBaseUrlInput.value || "").trim() || state.syncSettings.serverBaseUrl,
+    orgId: (el.orgIdInput.value || "").trim() || state.syncSettings.orgId,
+    projectId: (el.projectIdInput.value || "").trim() || state.syncSettings.projectId,
+    devUserEmail: (el.devUserEmailInput.value || "").trim() || state.syncSettings.devUserEmail,
+    autoUploadOnStop: !!el.autoUploadOnStopToggle.checked
+  };
+
+  const response = await sendRuntimeMessage({ type: "SET_SYNC_SETTINGS", patch });
+  state.syncSettings = {
+    ...state.syncSettings,
+    ...response.settings
+  };
+  render();
+}
+
 async function exportFromPrompt() {
   const format = window.prompt(
     "Choose export: har, bundle, prd, openapi-json, openapi-yaml, arch-md, arch-json",
@@ -407,6 +519,13 @@ function wireActions() {
     });
   });
 
+  el.uploadActiveSessionBtn.addEventListener("click", () => {
+    uploadActiveSession().catch((error) => {
+      setUploadStatus("error", "");
+      logStatus(`Upload failed: ${String(error.message || error)}`);
+    });
+  });
+
   el.saveSettingsBtn.addEventListener("click", async () => {
     const maxSessions = Number(el.maxSessionsInput.value || 25);
     await updateSettings({ maxSessions: Math.max(1, maxSessions) });
@@ -416,6 +535,16 @@ function wireActions() {
   el.autoSaveOnStopToggle.addEventListener("change", async () => {
     await updateSettings({ autoSaveOnStop: el.autoSaveOnStopToggle.checked });
     logStatus(`Auto-save on Stop ${el.autoSaveOnStopToggle.checked ? "enabled" : "disabled"}.`);
+  });
+
+  el.autoUploadOnStopToggle.addEventListener("change", async () => {
+    await saveSyncSettings();
+    logStatus(`Auto-upload on Stop ${el.autoUploadOnStopToggle.checked ? "enabled" : "disabled"}.`);
+  });
+
+  el.saveSyncSettingsBtn.addEventListener("click", async () => {
+    await saveSyncSettings();
+    logStatus("Sync settings saved.");
   });
 
   el.exportHarBtn.addEventListener("click", () => {
@@ -452,7 +581,6 @@ function wireActions() {
       logStatus(`OpenAPI YAML export failed: ${String(error.message || error)}`);
     }
   });
-
 
   el.exportPostmanCollectionBtn.addEventListener("click", async () => {
     try {
@@ -522,6 +650,12 @@ async function init() {
     }
   } catch (error) {
     logStatus(`Unable to restore session: ${String(error.message || error)}`);
+  }
+
+  try {
+    await refreshSyncSettings();
+  } catch (error) {
+    logStatus(`Unable to load sync settings: ${String(error.message || error)}`);
   }
 
   await refreshLibrary(false);

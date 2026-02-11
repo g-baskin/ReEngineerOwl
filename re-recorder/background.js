@@ -1,5 +1,6 @@
 import { buildOpenApiSpec, toYamlString } from "./utils/openapi.js";
 import { analyzeArchitecture } from "./utils/architecture.js";
+import { buildPostmanCollection, buildPostmanEnvironment } from "./utils/postman.js";
 import {
   listSessions,
   loadSession,
@@ -11,9 +12,10 @@ import {
   getLibrarySettings,
   updateLibrarySettings
 } from "./utils/storage.js";
-import { buildPostmanCollection, buildPostmanEnvironment } from "./utils/postman.js";
+import { DEFAULT_SYNC_SETTINGS, uploadCaptureSession } from "./utils/upload.js";
 
 const SESSION_KEY = "reRecorder.lastSession";
+const SYNC_SETTINGS_KEY = "reRecorder.syncSettings";
 
 const activeState = {
   id: null,
@@ -70,6 +72,24 @@ async function persistCurrentPayload() {
   await chrome.storage.local.set({ [SESSION_KEY]: getCurrentPayload() });
 }
 
+async function getSyncSettings() {
+  const result = await chrome.storage.local.get(SYNC_SETTINGS_KEY);
+  return {
+    ...DEFAULT_SYNC_SETTINGS,
+    ...(result[SYNC_SETTINGS_KEY] || {})
+  };
+}
+
+async function setSyncSettings(patch = {}) {
+  const current = await getSyncSettings();
+  const next = {
+    ...current,
+    ...patch
+  };
+  await chrome.storage.local.set({ [SYNC_SETTINGS_KEY]: next });
+  return next;
+}
+
 async function computeOpenApiJsonContent(sessionPayload) {
   if (typeof sessionPayload?.openapi?.json === "string") {
     return sessionPayload.openapi.json;
@@ -124,8 +144,26 @@ async function persistActiveSessionCacheIfNeeded() {
   await saveSession(activeState.payload, stored.metadata);
 }
 
+function buildUploadMetadata(sessionRecord, payload, message = {}) {
+  const metadata = sessionRecord?.metadata || {};
+  return {
+    title: message.title || metadata.name || `Capture ${new Date().toISOString()}`,
+    notes: message.notes || metadata.notes || "",
+    requestCount: message.requestCount ?? metadata.normalizedCount ?? payload?.normalizedEntries?.length,
+    distinctEndpointCount: message.distinctEndpointCount ?? metadata.distinctPathTemplates,
+    hostCount: message.hostCount ?? (Array.isArray(metadata.hosts) ? metadata.hosts.length : undefined),
+    timeWindowStart: message.timeWindowStart || payload?.savedAt,
+    timeWindowEnd: message.timeWindowEnd || new Date().toISOString()
+  };
+}
+
+async function uploadSessionPayload(payload, metadata) {
+  const syncSettings = await getSyncSettings();
+  return uploadCaptureSession(payload, metadata, syncSettings);
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!message || typeof message !== "object") return;
+  if (!message || typeof message !== "object") return undefined;
 
   const respondAsync = async (handler) => {
     await ready;
@@ -179,9 +217,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "LOAD_SESSION") {
     respondAsync(async () => {
       const session = await loadSession(message.id);
-      if (!session) {
-        throw new Error("Session not found");
-      }
+      if (!session) throw new Error("Session not found");
       activeState.id = session.metadata.id;
       activeState.payload = normalizeSessionPayload(session.payload);
       await Promise.all([setActiveSession(session.metadata.id), persistCurrentPayload()]);
@@ -202,10 +238,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.type === "RENAME_SESSION") {
-    respondAsync(async () => {
-      const metadata = await updateSessionMeta(message.id, { name: message.name });
-      return { metadata };
-    });
+    respondAsync(async () => ({ metadata: await updateSessionMeta(message.id, { name: message.name }) }));
     return true;
   }
 
@@ -225,38 +258,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
     return true;
   }
-  if (message.type === "EXPORT_POSTMAN_COLLECTION") {
-    getStoredSession()
-      .then((session) => {
-        const normalizedEntries = session?.normalizedEntries || [];
-        const collection = buildPostmanCollection(normalizedEntries);
-        sendResponse({ ok: true, content: JSON.stringify(collection, null, 2) });
-      })
-      .catch((error) => sendResponse({ ok: false, error: String(error) }));
-
-    return true;
-  }
-
-  if (message.type === "EXPORT_POSTMAN_ENV") {
-    getStoredSession()
-      .then((session) => {
-        const normalizedEntries = session?.normalizedEntries || [];
-        const environment = buildPostmanEnvironment(normalizedEntries);
-        sendResponse({ ok: true, content: JSON.stringify(environment, null, 2) });
-      })
-      .catch((error) => sendResponse({ ok: false, error: String(error) }));
-
-    return true;
-  }
-
-  if (message.type === "EXPORT_ARCH_REPORT_MD") {
-    getStoredSession()
-      .then((session) => {
-        const normalizedEntries = session?.normalizedEntries || [];
-        const report = analyzeArchitecture(normalizedEntries);
-        sendResponse({ ok: true, content: report.markdown });
-      })
-      .catch((error) => sendResponse({ ok: false, error: String(error) }));
 
   if (message.type === "GET_ACTIVE_SESSION") {
     respondAsync(async () => ({ activeSessionId: activeState.id }));
@@ -286,6 +287,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "EXPORT_POSTMAN_COLLECTION") {
+    respondAsync(async () => {
+      const collection = buildPostmanCollection(activeState.payload?.normalizedEntries || []);
+      return { content: JSON.stringify(collection, null, 2) };
+    });
+    return true;
+  }
+
+  if (message.type === "EXPORT_POSTMAN_ENV") {
+    respondAsync(async () => {
+      const environment = buildPostmanEnvironment(activeState.payload?.normalizedEntries || []);
+      return { content: JSON.stringify(environment, null, 2) };
+    });
+    return true;
+  }
+
   if (message.type === "EXPORT_ARCH_REPORT_MD") {
     respondAsync(async () => {
       const content = await computeArchitectureMarkdown(activeState.payload);
@@ -303,4 +320,37 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
     return true;
   }
+
+  if (message.type === "GET_SYNC_SETTINGS") {
+    respondAsync(async () => ({ settings: await getSyncSettings() }));
+    return true;
+  }
+
+  if (message.type === "SET_SYNC_SETTINGS") {
+    respondAsync(async () => ({ settings: await setSyncSettings(message.patch || {}) }));
+    return true;
+  }
+
+  if (message.type === "UPLOAD_ACTIVE_SESSION") {
+    respondAsync(async () => {
+      const payload = getCurrentPayload();
+      const metadata = buildUploadMetadata(null, payload, message);
+      return await uploadSessionPayload(payload, metadata);
+    });
+    return true;
+  }
+
+  if (message.type === "UPLOAD_SESSION_BY_ID") {
+    respondAsync(async () => {
+      if (!message.id) throw new Error("Session id is required.");
+      const sessionRecord = await loadSession(message.id);
+      if (!sessionRecord?.payload) throw new Error("Session not found");
+      const payload = normalizeSessionPayload(sessionRecord.payload);
+      const metadata = buildUploadMetadata(sessionRecord, payload, message);
+      return await uploadSessionPayload(payload, metadata);
+    });
+    return true;
+  }
+
+  return undefined;
 });
