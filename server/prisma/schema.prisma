@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CaptureStatus {
+  UPLOADED
+  PROCESSING
+  READY
+  ERROR
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  displayName  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  memberships  OrgMember[]
+  captures     Capture[]   @relation("CaptureCreatedBy")
+}
+
+model Org {
+  id          String      @id @default(cuid())
+  name        String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  members     OrgMember[]
+  projects    Project[]
+}
+
+model OrgMember {
+  id         String   @id @default(cuid())
+  orgId      String
+  userId     String
+  role       String   @default("member")
+  createdAt  DateTime @default(now())
+
+  org        Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+}
+
+model Project {
+  id          String     @id @default(cuid())
+  orgId       String
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  org         Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  captures    Capture[]
+}
+
+model Capture {
+  id                   String        @id @default(cuid())
+  projectId            String
+  createdAt            DateTime      @default(now())
+  createdByUserId      String
+  title                String
+  notes                String?
+  status               CaptureStatus @default(UPLOADED)
+  errorMessage         String?
+  statsJson            Json?
+  bundleStorageKey     String
+  schemaStorageKey     String?
+  openapiStorageKey    String?
+  postmanStorageKey    String?
+  architectureStorageKey String?
+
+  project              Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdByUser        User          @relation("CaptureCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([projectId, createdAt])
+}
