@@ -1,10 +1,10 @@
 import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 import { env } from '../../config/env.js';
 
 export const CAPTURE_ANALYSIS_QUEUE = 'capture-analysis';
 
-const connection = env.USE_REDIS_QUEUE ? new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null }) : null;
+const connection = env.USE_REDIS_QUEUE ? new Redis(env.REDIS_URL, { maxRetriesPerRequest: null }) : null;
 
 export const analysisQueue = connection
   ? new Queue(CAPTURE_ANALYSIS_QUEUE, {

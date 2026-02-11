@@ -51,8 +51,7 @@ export class MinioStorageAdapter implements StorageAdapter {
 
       return {
         key,
-        content: Buffer.concat(chunks),
-        contentType: undefined
+        content: Buffer.concat(chunks)
       };
     } catch {
       return null;

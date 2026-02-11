@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
 
@@ -22,7 +22,9 @@ const requireOrgMember = async (orgId: string, userId: string): Promise<boolean>
   return Boolean(membership);
 };
 
-projectsRouter.post('/', async (req, res) => {
+type OrgParams = { orgId: string };
+
+projectsRouter.post('/', async (req: Request<OrgParams>, res: Response) => {
   const user = req.user;
   if (!user) {
     res.status(401).json({ error: 'Unauthenticated' });
@@ -45,14 +47,14 @@ projectsRouter.post('/', async (req, res) => {
     data: {
       orgId,
       name: parsed.data.name,
-      description: parsed.data.description
+      description: parsed.data.description ?? null
     }
   });
 
   res.status(201).json(project);
 });
 
-projectsRouter.get('/', async (req, res) => {
+projectsRouter.get('/', async (req: Request<OrgParams>, res: Response) => {
   const user = req.user;
   if (!user) {
     res.status(401).json({ error: 'Unauthenticated' });

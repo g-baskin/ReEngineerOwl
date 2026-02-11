@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Request } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
@@ -20,7 +20,7 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req) {
+      req(req: any) {
         return {
           method: req.method,
           url: req.url,
@@ -33,7 +33,7 @@ app.use(
 
 app.use(
   cors({
-    origin(origin, callback) {
+    origin(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
       if (!origin || env.corsAllowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -47,7 +47,7 @@ app.use(helmet());
 app.use(express.json({ limit: env.maxUploadSizeBytes }));
 app.use(express.urlencoded({ extended: false, limit: env.maxUploadSizeBytes }));
 
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: Request, res) => {
   res.json({ ok: true, authMode: env.AUTH_MODE, useMinio: env.USE_MINIO, useRedisQueue: env.USE_REDIS_QUEUE });
 });
 

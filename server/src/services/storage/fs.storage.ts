@@ -17,8 +17,11 @@ export class FsStorageAdapter implements StorageAdapter {
     const filePath = this.toAbsolute(key);
     try {
       const content = await fs.readFile(filePath);
-      const contentType = mime.lookup(key) || undefined;
-      return { key, content, contentType: typeof contentType === 'string' ? contentType : undefined };
+      const contentType = mime.lookup(key);
+      if (typeof contentType === 'string') {
+        return { key, content, contentType };
+      }
+      return { key, content };
     } catch {
       return null;
     }
