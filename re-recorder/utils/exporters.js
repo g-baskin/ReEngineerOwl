@@ -1,4 +1,5 @@
 import { buildOpenApiSpec, toYamlString } from "./openapi.js";
+import { buildPostmanCollection, buildPostmanEnvironment } from "./postman.js";
 
 function downloadFile(filename, content, type = "application/json") {
   const blob = new Blob([content], { type });
@@ -181,4 +182,26 @@ export function exportArchitectureMarkdown(content) {
 
 export function exportArchitectureJson(content) {
   downloadFile("architecture.report.json", content, "application/json");
+}
+
+
+export function exportPostmanCollection(normalizedEntries) {
+  const collection = buildPostmanCollection(normalizedEntries);
+  downloadFile("postman.collection.json", JSON.stringify(collection, null, 2), "application/json");
+  return collection;
+}
+
+export function exportPostmanEnvironment(normalizedEntries) {
+  const environment = buildPostmanEnvironment(normalizedEntries);
+  downloadFile("postman.environment.json", JSON.stringify(environment, null, 2), "application/json");
+  return environment;
+}
+
+
+export function exportPostmanCollectionContent(content) {
+  downloadFile("postman.collection.json", content, "application/json");
+}
+
+export function exportPostmanEnvironmentContent(content) {
+  downloadFile("postman.environment.json", content, "application/json");
 }

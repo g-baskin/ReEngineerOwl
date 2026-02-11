@@ -7,6 +7,8 @@ import {
   exportMarkdown,
   exportOpenApiJsonContent,
   exportOpenApiYamlContent,
+  exportPostmanCollectionContent,
+  exportPostmanEnvironmentContent,
   exportArchitectureMarkdown,
   exportArchitectureJson
 } from "./utils/exporters.js";
@@ -37,6 +39,8 @@ const el = {
   exportMdBtn: document.getElementById("exportMdBtn"),
   exportOpenApiJsonBtn: document.getElementById("exportOpenApiJsonBtn"),
   exportOpenApiYamlBtn: document.getElementById("exportOpenApiYamlBtn"),
+  exportPostmanCollectionBtn: document.getElementById("exportPostmanCollectionBtn"),
+  exportPostmanEnvBtn: document.getElementById("exportPostmanEnvBtn"),
   exportArchitectureMdBtn: document.getElementById("exportArchitectureMdBtn"),
   exportArchitectureJsonBtn: document.getElementById("exportArchitectureJsonBtn"),
   rawCount: document.getElementById("rawCount"),
@@ -153,6 +157,8 @@ function render() {
   el.exportMdBtn.disabled = !hasData;
   el.exportOpenApiJsonBtn.disabled = !hasData;
   el.exportOpenApiYamlBtn.disabled = !hasData;
+  el.exportPostmanCollectionBtn.disabled = !hasData;
+  el.exportPostmanEnvBtn.disabled = !hasData;
   el.exportArchitectureMdBtn.disabled = !hasData;
   el.exportArchitectureJsonBtn.disabled = !hasData;
 
@@ -444,6 +450,27 @@ function wireActions() {
       logStatus("Exported openapi.yaml.");
     } catch (error) {
       logStatus(`OpenAPI YAML export failed: ${String(error.message || error)}`);
+    }
+  });
+
+
+  el.exportPostmanCollectionBtn.addEventListener("click", async () => {
+    try {
+      const response = await sendRuntimeMessage({ type: "EXPORT_POSTMAN_COLLECTION" });
+      exportPostmanCollectionContent(response.content);
+      logStatus("Exported postman.collection.json.");
+    } catch (error) {
+      logStatus(`Postman Collection export failed: ${String(error.message || error)}`);
+    }
+  });
+
+  el.exportPostmanEnvBtn.addEventListener("click", async () => {
+    try {
+      const response = await sendRuntimeMessage({ type: "EXPORT_POSTMAN_ENV" });
+      exportPostmanEnvironmentContent(response.content);
+      logStatus("Exported postman.environment.json.");
+    } catch (error) {
+      logStatus(`Postman Environment export failed: ${String(error.message || error)}`);
     }
   });
 

@@ -11,6 +11,7 @@ import {
   getLibrarySettings,
   updateLibrarySettings
 } from "./utils/storage.js";
+import { buildPostmanCollection, buildPostmanEnvironment } from "./utils/postman.js";
 
 const SESSION_KEY = "reRecorder.lastSession";
 
@@ -224,6 +225,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
     return true;
   }
+  if (message.type === "EXPORT_POSTMAN_COLLECTION") {
+    getStoredSession()
+      .then((session) => {
+        const normalizedEntries = session?.normalizedEntries || [];
+        const collection = buildPostmanCollection(normalizedEntries);
+        sendResponse({ ok: true, content: JSON.stringify(collection, null, 2) });
+      })
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
+
+    return true;
+  }
+
+  if (message.type === "EXPORT_POSTMAN_ENV") {
+    getStoredSession()
+      .then((session) => {
+        const normalizedEntries = session?.normalizedEntries || [];
+        const environment = buildPostmanEnvironment(normalizedEntries);
+        sendResponse({ ok: true, content: JSON.stringify(environment, null, 2) });
+      })
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
+
+    return true;
+  }
+
+  if (message.type === "EXPORT_ARCH_REPORT_MD") {
+    getStoredSession()
+      .then((session) => {
+        const normalizedEntries = session?.normalizedEntries || [];
+        const report = analyzeArchitecture(normalizedEntries);
+        sendResponse({ ok: true, content: report.markdown });
+      })
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
 
   if (message.type === "GET_ACTIVE_SESSION") {
     respondAsync(async () => ({ activeSessionId: activeState.id }));
