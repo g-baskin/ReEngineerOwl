@@ -6,7 +6,9 @@ import {
   exportBundle,
   exportMarkdown,
   exportOpenApiJsonContent,
-  exportOpenApiYamlContent
+  exportOpenApiYamlContent,
+  exportArchitectureMarkdown,
+  exportArchitectureJson
 } from "./utils/exporters.js";
 
 const state = {
@@ -27,6 +29,8 @@ const el = {
   exportMdBtn: document.getElementById("exportMdBtn"),
   exportOpenApiJsonBtn: document.getElementById("exportOpenApiJsonBtn"),
   exportOpenApiYamlBtn: document.getElementById("exportOpenApiYamlBtn"),
+  exportArchitectureMdBtn: document.getElementById("exportArchitectureMdBtn"),
+  exportArchitectureJsonBtn: document.getElementById("exportArchitectureJsonBtn"),
   rawCount: document.getElementById("rawCount"),
   filteredCount: document.getElementById("filteredCount"),
   normalizedCount: document.getElementById("normalizedCount"),
@@ -57,6 +61,8 @@ function render() {
   el.exportMdBtn.disabled = !hasData;
   el.exportOpenApiJsonBtn.disabled = !hasData;
   el.exportOpenApiYamlBtn.disabled = !hasData;
+  el.exportArchitectureMdBtn.disabled = !hasData;
+  el.exportArchitectureJsonBtn.disabled = !hasData;
 
   el.workflowList.innerHTML = "";
   state.workflowSteps.slice(0, 12).forEach((step) => {
@@ -223,6 +229,26 @@ function wireActions() {
       logStatus("Exported openapi.yaml.");
     } catch (error) {
       logStatus(`OpenAPI YAML export failed: ${String(error.message || error)}`);
+    }
+  });
+
+  el.exportArchitectureMdBtn.addEventListener("click", async () => {
+    try {
+      const response = await sendRuntimeMessage({ type: "EXPORT_ARCH_REPORT_MD" });
+      exportArchitectureMarkdown(response.content);
+      logStatus("Exported architecture.report.md.");
+    } catch (error) {
+      logStatus(`Architecture report (Markdown) export failed: ${String(error.message || error)}`);
+    }
+  });
+
+  el.exportArchitectureJsonBtn.addEventListener("click", async () => {
+    try {
+      const response = await sendRuntimeMessage({ type: "EXPORT_ARCH_REPORT_JSON" });
+      exportArchitectureJson(response.content);
+      logStatus("Exported architecture.report.json.");
+    } catch (error) {
+      logStatus(`Architecture report (JSON) export failed: ${String(error.message || error)}`);
     }
   });
 }

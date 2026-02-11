@@ -20,6 +20,7 @@
    - **Export Markdown (PRD)** → `PRD.md`
    - **Export OpenAPI (JSON)** → `openapi.json`
    - **Export OpenAPI (YAML)** → `openapi.yaml`
+   - **Export Architecture Report** → `architecture.report.md` (+ optional `architecture.report.json`)
 
 ## OpenAPI export details
 - The extension generates an OpenAPI **3.1.0** spec from captured `normalizedEntries` and uses `schema.summary.json` only as a fallback when samples are missing.
@@ -34,3 +35,10 @@
 - Sensitive headers and token-like data are redacted in normalized output.
 - Use **Full capture** only when you intentionally want non-JSON traffic retained.
 - Some requests may not expose bodies due to browser/network constraints, CORS restrictions, or opaque responses.
+
+
+## Architecture Intelligence export
+- Generates an educational, generalized architecture analysis from captured `normalizedEntries` only (no backend calls).
+- Detects implementation patterns such as async job orchestration, polling cadence, pagination, search/filter usage, REST resource structure, auth boundaries, rate limiting, caching hints, and data complexity signals.
+- Sanitizes output by aliasing hosts (`captured-host-*`), parameterizing ID-like segments (`{id}`), and omitting secrets/query values to avoid proprietary cloning.
+- Produces `architecture.report.md` for human-readable guidance and `architecture.report.json` for automation workflows.
