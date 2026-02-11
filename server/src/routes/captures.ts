@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { CaptureStatus } from '@prisma/client';
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import multer from 'multer';
 import mime from 'mime-types';
 import { z } from 'zod';
@@ -33,6 +33,19 @@ type ArtifactName = keyof typeof ARTIFACT_MAP;
 
 export const capturesRouter = Router({ mergeParams: true });
 
+type CaptureRouteParams = {
+  orgId: string;
+  projectId: string;
+};
+
+type CaptureByIdRouteParams = CaptureRouteParams & {
+  captureId: string;
+};
+
+type CaptureArtifactRouteParams = CaptureByIdRouteParams & {
+  artifact: string;
+};
+
 const requireProjectAccess = async (orgId: string, projectId: string, userId: string) => {
   const membership = await prisma.orgMember.findUnique({
     where: { orgId_userId: { orgId, userId } }
@@ -45,7 +58,7 @@ const requireProjectAccess = async (orgId: string, projectId: string, userId: st
   return project;
 };
 
-capturesRouter.post('/', upload.any(), async (req, res) => {
+capturesRouter.post('/', upload.any(), async (req: Request<CaptureRouteParams>, res: Response) => {
   const user = req.user;
   if (!user) {
     res.status(401).json({ error: 'Unauthenticated' });
@@ -65,6 +78,8 @@ capturesRouter.post('/', upload.any(), async (req, res) => {
     return;
   }
 
+  const notes = typeof parsed.data.notes === 'string' ? parsed.data.notes : null;
+
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
   const filesByField = new Map(files.map((file) => [file.fieldname, file]));
   const bundleFile = filesByField.get('bundle');
@@ -78,14 +93,14 @@ capturesRouter.post('/', upload.any(), async (req, res) => {
   const captureId = crypto.randomUUID();
   const prefix = `orgs/${orgId}/projects/${projectId}/captures/${captureId}`;
 
-  const putFile = async (fieldName: string, file?: Express.Multer.File): Promise<string | undefined> => {
-    if (!file) return undefined;
+  const putFile = async (fieldName: string, file?: Express.Multer.File): Promise<string | null> => {
+    if (!file) return null;
     const key = `${prefix}/${fieldName}.${extensionFor(file)}`;
     await storage.putBlob({ key, content: file.buffer, contentType: file.mimetype });
     return key;
   };
 
-  let architectureKey: string | undefined;
+  let architectureKey: string | null = null;
   try {
     const entries = JSON.parse(bundleFile.buffer.toString('utf-8')) as NormalizedEntry[];
     const report = analyzeArchitecture(entries);
@@ -102,7 +117,7 @@ capturesRouter.post('/', upload.any(), async (req, res) => {
       contentType: 'text/markdown'
     });
   } catch {
-    architectureKey = undefined;
+    architectureKey = null;
   }
 
   const bundleStorageKey = await putFile('bundle', bundleFile);
@@ -116,13 +131,13 @@ capturesRouter.post('/', upload.any(), async (req, res) => {
       projectId,
       createdByUserId: user.id,
       title: parsed.data.title,
-      notes: parsed.data.notes,
-      statsJson: parsed.data.stats ? JSON.parse(parsed.data.stats) : undefined,
+      notes,
+      statsJson: parsed.data.stats ? JSON.parse(parsed.data.stats) : null,
       status: env.USE_REDIS_QUEUE ? CaptureStatus.PROCESSING : CaptureStatus.READY,
       bundleStorageKey: bundleStorageKey ?? `${prefix}/bundle.json`,
-      schemaStorageKey,
-      openapiStorageKey,
-      postmanStorageKey,
+      schemaStorageKey: schemaStorageKey ?? null,
+      openapiStorageKey: openapiStorageKey ?? null,
+      postmanStorageKey: postmanStorageKey ?? null,
       architectureStorageKey: architectureKey
     }
   });
@@ -132,7 +147,7 @@ capturesRouter.post('/', upload.any(), async (req, res) => {
   res.status(201).json(capture);
 });
 
-capturesRouter.get('/', async (req, res) => {
+capturesRouter.get('/', async (req: Request<CaptureRouteParams>, res: Response) => {
   const user = req.user;
   if (!user) {
     res.status(401).json({ error: 'Unauthenticated' });
@@ -154,7 +169,7 @@ capturesRouter.get('/', async (req, res) => {
   res.json(captures);
 });
 
-capturesRouter.get('/:captureId', async (req, res) => {
+capturesRouter.get('/:captureId', async (req: Request<CaptureByIdRouteParams>, res: Response) => {
   const user = req.user;
   if (!user) {
     res.status(401).json({ error: 'Unauthenticated' });
@@ -176,7 +191,7 @@ capturesRouter.get('/:captureId', async (req, res) => {
   res.json(capture);
 });
 
-capturesRouter.get('/:captureId/download/:artifact', async (req, res) => {
+capturesRouter.get('/:captureId/download/:artifact', async (req: Request<CaptureArtifactRouteParams>, res: Response) => {
   const user = req.user;
   if (!user) {
     res.status(401).json({ error: 'Unauthenticated' });
