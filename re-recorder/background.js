@@ -1,4 +1,5 @@
 import { buildOpenApiSpec, toYamlString } from "./utils/openapi.js";
+import { analyzeArchitecture } from "./utils/architecture.js";
 
 const SESSION_KEY = "reRecorder.lastSession";
 
@@ -64,6 +65,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const schemaSummary = session?.schemaSummary || [];
         const spec = buildOpenApiSpec(normalizedEntries, schemaSummary);
         sendResponse({ ok: true, content: toYamlString(spec) });
+      })
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
+
+    return true;
+  }
+
+  if (message.type === "EXPORT_ARCH_REPORT_MD") {
+    getStoredSession()
+      .then((session) => {
+        const normalizedEntries = session?.normalizedEntries || [];
+        const report = analyzeArchitecture(normalizedEntries);
+        sendResponse({ ok: true, content: report.markdown });
+      })
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
+
+    return true;
+  }
+
+  if (message.type === "EXPORT_ARCH_REPORT_JSON") {
+    getStoredSession()
+      .then((session) => {
+        const normalizedEntries = session?.normalizedEntries || [];
+        const report = analyzeArchitecture(normalizedEntries);
+        sendResponse({ ok: true, content: JSON.stringify(report.json, null, 2) });
       })
       .catch((error) => sendResponse({ ok: false, error: String(error) }));
 

@@ -140,3 +140,12 @@ export function exportOpenApiJsonContent(content) {
 export function exportOpenApiYamlContent(content) {
   downloadFile("openapi.yaml", content, "application/yaml");
 }
+
+
+export function exportArchitectureMarkdown(content) {
+  downloadFile("architecture.report.md", content, "text/markdown");
+}
+
+export function exportArchitectureJson(content) {
+  downloadFile("architecture.report.json", content, "application/json");
+}
