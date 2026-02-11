@@ -15,7 +15,30 @@ function mapHeaders(headers = []) {
   return headers.map((h) => ({ name: h.name || "", value: h.value || "" }));
 }
 
-export function exportHar(rawEntries) {
+function normalizeSessionInput(value, schemaSummaryArg) {
+  if (Array.isArray(value)) {
+    return {
+      rawEntries: value,
+      filteredEntries: [],
+      normalizedEntries: value,
+      workflowSteps: [],
+      schemaSummary: schemaSummaryArg || []
+    };
+  }
+
+  return {
+    rawEntries: value?.rawEntries || [],
+    filteredEntries: value?.filteredEntries || [],
+    normalizedEntries: value?.normalizedEntries || [],
+    workflowSteps: value?.workflowSteps || value?.workflow || [],
+    schemaSummary: value?.schemaSummary || schemaSummaryArg || []
+  };
+}
+
+export function exportHar(sessionOrEntries) {
+  const session = normalizeSessionInput(sessionOrEntries);
+  const rawEntries = session.rawEntries || [];
+
   const har = {
     log: {
       version: "1.2",
@@ -79,25 +102,36 @@ export function exportHar(rawEntries) {
   downloadFile("capture.har", JSON.stringify(har, null, 2), "application/json");
 }
 
-export function exportBundle(normalizedEntries, schemaSummary) {
+export function exportBundle(sessionOrEntries, schemaSummaryArg) {
+  const session = normalizeSessionInput(sessionOrEntries, schemaSummaryArg);
+
   downloadFile(
     "capture.bundle.json",
-    JSON.stringify({ capturedAt: new Date().toISOString(), entries: normalizedEntries }, null, 2),
+    JSON.stringify({ capturedAt: new Date().toISOString(), entries: session.normalizedEntries }, null, 2),
     "application/json"
   );
 
-  downloadFile("schema.summary.json", JSON.stringify(schemaSummary, null, 2), "application/json");
+  downloadFile("schema.summary.json", JSON.stringify(session.schemaSummary, null, 2), "application/json");
 }
 
-export function exportMarkdown(workflowSteps, schemaSummary, normalizedCount) {
-  const workflowLines = workflowSteps
+export function exportMarkdown(sessionOrSteps, schemaSummaryArg, normalizedCountArg) {
+  const session =
+    Array.isArray(sessionOrSteps) && typeof sessionOrSteps[0]?.step === "number"
+      ? {
+          workflowSteps: sessionOrSteps,
+          schemaSummary: schemaSummaryArg || [],
+          normalizedEntries: new Array(normalizedCountArg || 0)
+        }
+      : normalizeSessionInput(sessionOrSteps, schemaSummaryArg);
+
+  const workflowLines = (session.workflowSteps || [])
     .map(
       (step) =>
         `${step.step}. ${step.name}\n   - Method: ${step.method}\n   - Endpoint: ${step.endpoint}\n   - Description: ${step.summary}`
     )
     .join("\n\n");
 
-  const schemaLines = schemaSummary
+  const schemaLines = (session.schemaSummary || [])
     .map((schema) => {
       const fields = Object.entries(schema.fields || {})
         .map(([field, type]) => `  - ${field}: ${type}`)
@@ -109,7 +143,7 @@ export function exportMarkdown(workflowSteps, schemaSummary, normalizedCount) {
   const content = `# Reverse Engineered Workflow
 
 ## Overview
-Captured ${normalizedCount} API calls.
+Captured ${(session.normalizedEntries || []).length} API calls.
 
 ## Workflow Steps
 ${workflowLines || "No workflow steps inferred."}
@@ -140,7 +174,6 @@ export function exportOpenApiJsonContent(content) {
 export function exportOpenApiYamlContent(content) {
   downloadFile("openapi.yaml", content, "application/yaml");
 }
-
 
 export function exportArchitectureMarkdown(content) {
   downloadFile("architecture.report.md", content, "text/markdown");
