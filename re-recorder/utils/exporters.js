@@ -1,3 +1,5 @@
+import { buildOpenApiSpec, toYamlString } from "./openapi.js";
+
 function downloadFile(filename, content, type = "application/json") {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -117,4 +119,24 @@ ${schemaLines || "No endpoint schema data available."}
 `;
 
   downloadFile("PRD.md", content, "text/markdown");
+}
+
+export function exportOpenApiJson(normalizedEntries, schemaSummary) {
+  const spec = buildOpenApiSpec(normalizedEntries, schemaSummary);
+  downloadFile("openapi.json", JSON.stringify(spec, null, 2), "application/json");
+  return spec;
+}
+
+export function exportOpenApiYaml(normalizedEntries, schemaSummary) {
+  const spec = buildOpenApiSpec(normalizedEntries, schemaSummary);
+  downloadFile("openapi.yaml", toYamlString(spec), "application/yaml");
+  return spec;
+}
+
+export function exportOpenApiJsonContent(content) {
+  downloadFile("openapi.json", content, "application/json");
+}
+
+export function exportOpenApiYamlContent(content) {
+  downloadFile("openapi.yaml", content, "application/yaml");
 }
