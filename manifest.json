@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "RE Recorder",
+  "version": "2.0.0",
+  "description": "Capture and export API workflows with injected page hooks and DevTools fallback mode.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "RE Recorder"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page_hook.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
