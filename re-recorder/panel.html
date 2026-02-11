@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RE Recorder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>RE Recorder</h1>
+      <p class="subtitle">Network Capture & Workflow Extractor</p>
+
+      <section class="controls card">
+        <div class="button-row">
+          <button id="startBtn" class="primary">Start Capture</button>
+          <button id="stopBtn" disabled>Stop Capture</button>
+        </div>
+
+        <div class="toggles">
+          <label><input type="checkbox" id="fullCaptureToggle" /> Full capture (non-JSON)</label>
+          <label><input type="checkbox" id="strictStatusToggle" checked /> Keep only 2xx/3xx responses</label>
+        </div>
+      </section>
+
+      <section class="stats card">
+        <h2>Capture Stats</h2>
+        <ul>
+          <li>Raw requests: <strong id="rawCount">0</strong></li>
+          <li>Filtered requests: <strong id="filteredCount">0</strong></li>
+          <li>Normalized entries: <strong id="normalizedCount">0</strong></li>
+        </ul>
+      </section>
+
+      <section class="workflow card">
+        <h2>Inferred Workflow Steps</h2>
+        <ol id="workflowList"></ol>
+      </section>
+
+      <section class="exports card">
+        <h2>Export</h2>
+        <div class="button-row">
+          <button id="exportHarBtn" disabled>Export HAR</button>
+          <button id="exportJsonBtn" disabled>Export JSON Bundle</button>
+          <button id="exportMdBtn" disabled>Export Markdown (PRD)</button>
+        </div>
+      </section>
+
+      <section class="log card">
+        <h2>Status</h2>
+        <pre id="statusLog">Ready.</pre>
+      </section>
+    </main>
+
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>
