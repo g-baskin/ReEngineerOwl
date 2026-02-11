@@ -1,7 +1,13 @@
 import { filterEntries } from "./utils/filter.js";
 import { normalizeEntries, buildSchemaSummary } from "./utils/normalize.js";
 import { inferWorkflowSteps } from "./utils/workflow.js";
-import { exportHar, exportBundle, exportMarkdown } from "./utils/exporters.js";
+import {
+  exportHar,
+  exportBundle,
+  exportMarkdown,
+  exportOpenApiJsonContent,
+  exportOpenApiYamlContent
+} from "./utils/exporters.js";
 
 const state = {
   isCapturing: false,
@@ -19,6 +25,8 @@ const el = {
   exportHarBtn: document.getElementById("exportHarBtn"),
   exportJsonBtn: document.getElementById("exportJsonBtn"),
   exportMdBtn: document.getElementById("exportMdBtn"),
+  exportOpenApiJsonBtn: document.getElementById("exportOpenApiJsonBtn"),
+  exportOpenApiYamlBtn: document.getElementById("exportOpenApiYamlBtn"),
   rawCount: document.getElementById("rawCount"),
   filteredCount: document.getElementById("filteredCount"),
   normalizedCount: document.getElementById("normalizedCount"),
@@ -47,6 +55,8 @@ function render() {
   el.exportHarBtn.disabled = state.rawEntries.length === 0;
   el.exportJsonBtn.disabled = !hasData;
   el.exportMdBtn.disabled = !hasData;
+  el.exportOpenApiJsonBtn.disabled = !hasData;
+  el.exportOpenApiYamlBtn.disabled = !hasData;
 
   el.workflowList.innerHTML = "";
   state.workflowSteps.slice(0, 12).forEach((step) => {
@@ -160,6 +170,23 @@ async function stopCapture() {
   logStatus(`Capture stopped. ${state.rawEntries.length} raw requests processed.`);
 }
 
+function sendRuntimeMessage(message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      const error = chrome.runtime.lastError;
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+      if (!response?.ok) {
+        reject(new Error(response?.error || "Unexpected runtime error"));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
 function wireActions() {
   el.startBtn.addEventListener("click", startCapture);
   el.stopBtn.addEventListener("click", stopCapture);
@@ -177,6 +204,26 @@ function wireActions() {
   el.exportMdBtn.addEventListener("click", () => {
     exportMarkdown(state.workflowSteps, state.schemaSummary, state.normalizedEntries.length);
     logStatus("Exported PRD.md.");
+  });
+
+  el.exportOpenApiJsonBtn.addEventListener("click", async () => {
+    try {
+      const response = await sendRuntimeMessage({ type: "EXPORT_OPENAPI_JSON" });
+      exportOpenApiJsonContent(response.content);
+      logStatus("Exported openapi.json.");
+    } catch (error) {
+      logStatus(`OpenAPI JSON export failed: ${String(error.message || error)}`);
+    }
+  });
+
+  el.exportOpenApiYamlBtn.addEventListener("click", async () => {
+    try {
+      const response = await sendRuntimeMessage({ type: "EXPORT_OPENAPI_YAML" });
+      exportOpenApiYamlContent(response.content);
+      logStatus("Exported openapi.yaml.");
+    } catch (error) {
+      logStatus(`OpenAPI YAML export failed: ${String(error.message || error)}`);
+    }
   });
 }
 
