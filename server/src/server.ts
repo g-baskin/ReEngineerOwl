@@ -1,7 +1,7 @@
 import express, { type Request } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import pinoHttp from 'pino-http';
+import pinoHttpModule from "pino-http";
 import pino from 'pino';
 import { env } from './config/env.js';
 import { prisma } from './db/prisma.js';
@@ -14,6 +14,7 @@ import { projectsRouter } from './routes/projects.js';
 import { startWorkers } from './services/jobs/workers.js';
 
 const logger = pino({ level: env.LOG_LEVEL });
+const pinoHttp = pinoHttpModule as unknown as (options: Record<string, unknown>) => express.RequestHandler;
 const app = express();
 
 app.use(
