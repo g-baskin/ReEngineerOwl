@@ -4,7 +4,6 @@
   "description": "Capture, filter, normalize, and export API workflows from browser network traffic.",
   "version": "1.0.0",
   "permissions": [
-    "devtools",
     "storage",
     "activeTab",
     "scripting"
